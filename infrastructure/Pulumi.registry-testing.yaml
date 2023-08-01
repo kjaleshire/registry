@@ -1,0 +1,5 @@
+config:
+  aws:region: us-west-2
+  registry:websiteLogsBucketName: pulumi-regisry-testing-logs
+  registry:originBucketNameOverride: "registry-origin-8da55eb9"
+  registry:pathToOriginBucketMetadata: ../origin-bucket-metadata.json

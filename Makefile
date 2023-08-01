@@ -20,7 +20,7 @@ test:
 
 .PHONY: build
 build:
-	./scripts/build.sh
+	./scripts/build.sh preview
 
 .PHONY: serve
 serve:
@@ -38,3 +38,7 @@ ci-pull-request-closed:
 ci-scheduled:
 	./scripts/ci/scheduled.sh
 
+.PHONY: ci_push
+ci_push::
+	$(MAKE) ensure
+	./scripts/push.sh

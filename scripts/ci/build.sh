@@ -1,35 +1,85 @@
 #!/bin/bash
 
+# set -o errexit -o pipefail
+
+# source ./scripts/ci/common.sh
+
+# # URL to the Pulumi conversion service.
+# export PULUMI_CONVERT_URL="${PULUMI_CONVERT_URL:-$(pulumi stack output --stack pulumi/tf2pulumi-service/production url)}"
+
+# export PULUMI_AI_WS_URL=${PULUMI_AI_WS_URL:-$(pulumi stack output --stack pulumi/pulumigpt-api/corp websocketUri)}
+
+# go install github.com/pulumi/docs/tools/resourcedocsgen@master
+
+# PKGS=(
+#     "aiven"
+#     "aws"
+# )
+
+# echo "Generating API docs for ${PKGS[*]}..."
+# echo ""
+
+# for PKG in "${PKGS[@]}" ; do \
+#     resourcedocsgen docs registry "${PKG}" \
+#         --commitSha "$(git_sha_short)" \
+#         --baseDocsOutDir "themes/default/content/registry/packages" \
+#         --basePackageTreeJSONOutDir "themes/default/static/registry/packages/navs" \
+#         --logtostderr
+# done
+
+# printf "Running Hugo...\n\n"
+# export REPO_THEME_PATH="themes/default/"
+# export HUGO_BASEURL="http://$(origin_bucket_prefix)-$(build_identifier).s3-website.$(aws_region).amazonaws.com"
+# GOGC=5 hugo --minify --templateMetrics --buildDrafts --buildFuture -e "preview" | grep -v -e 'WARN .* REF_NOT_FOUND'
+
+# printf "Done!\n\n"
+
+
+
+#############################
+
 set -o errexit -o pipefail
 
-source ./scripts/ci/common.sh
+source ./scripts/common.sh
 
-# URL to the Pulumi conversion service.
+# URLs to Pulumi utility services.
 export PULUMI_CONVERT_URL="${PULUMI_CONVERT_URL:-$(pulumi stack output --stack pulumi/tf2pulumi-service/production url)}"
-
 export PULUMI_AI_WS_URL=${PULUMI_AI_WS_URL:-$(pulumi stack output --stack pulumi/pulumigpt-api/corp websocketUri)}
 
-go install github.com/pulumi/docs/tools/resourcedocsgen@master
+printf "Compiling theme JavaScript and CSS...\n\n"
+export ASSET_BUNDLE_ID="$(build_identifier)"
 
-PKGS=(
-    "aiven"
-    "aws"
-)
+# Paths to the CSS and JS bundles we'll generate below. Note that environment variables
+# are read by some templates during the Hugo build process.
+export CSS_BUNDLE="static/css/styles.${ASSET_BUNDLE_ID}.css"
+export JS_BUNDLE="static/js/bundle.min.${ASSET_BUNDLE_ID}.js"
 
-echo "Generating API docs for ${PKGS[*]}..."
-echo ""
+# Relative paths to those same files, read by Hugo templates.
+export REL_CSS_BUNDLE="/css/styles.${ASSET_BUNDLE_ID}.css"
+export REL_JS_BUNDLE="/js/bundle.min.${ASSET_BUNDLE_ID}.js"
+export REPO_THEME_PATH="themes/default/"
 
-for PKG in "${PKGS[@]}" ; do \
-    resourcedocsgen docs registry "${PKG}" \
-        --commitSha "$(git_sha_short)" \
-        --baseDocsOutDir "themes/default/content/registry/packages" \
-        --basePackageTreeJSONOutDir "themes/default/static/registry/packages/navs" \
-        --logtostderr
-done
+printf "Copying prebuilt docs...\n\n"
+make copy_static_prebuilt
+
+REGISTRY_COMMIT="$(go mod graph | grep pulumi/registry/themes/default | sed 's/.*-//')"
+
+# printf "Generating API docs from registry commit %s...\n\n" "${REGISTRY_COMMIT}"
+# pushd tools/resourcedocsgen
+# go build -o "${GOPATH}/bin/resourcedocsgen" .
+# resourcedocsgen docs registry --commitSha "${REGISTRY_COMMIT}" --logtostderr
+# popd
 
 printf "Running Hugo...\n\n"
-export REPO_THEME_PATH="themes/default/"
-export HUGO_BASEURL="http://$(origin_bucket_prefix)-$(build_identifier).s3-website.$(aws_region).amazonaws.com"
-GOGC=5 hugo --minify --templateMetrics --buildDrafts --buildFuture -e "preview" | grep -v -e 'WARN .* REF_NOT_FOUND'
+if [ "$1" == "preview" ]; then
+    export HUGO_BASEURL="http://$(origin_bucket_prefix)-$(build_identifier).s3-website.$(aws_region).amazonaws.com"
+    GOGC=3 hugo --minify --buildFuture --templateMetrics -e "preview"
+else
+    GOGC=3 hugo --minify --buildFuture --templateMetrics -e production
+fi
+
+# Purge unused CSS.
+yarn run minify-css
 
 printf "Done!\n\n"
+

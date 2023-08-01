@@ -9,5 +9,8 @@
         "concurrently": "^6.0.0",
         "js-yaml": "^3.13.1",
         "markdownlint": "^0.28.0"
+    },
+    "scripts": {
+        "minify-css": "node scripts/minify-css.js"
     }
 }
