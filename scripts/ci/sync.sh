@@ -76,6 +76,18 @@ echo "$s3_website_url"
 aws s3 cp "$build_dir/latest-version" "${destination_bucket_uri}/latest-version" \
     --content-type "text/plain" --acl public-read --region "$(aws_region)" --metadata-directive REPLACE
 
+if [[ "$1" == "update" ]]; then
+    # We host the bundle files in a separate bucket that `/css` and `js` routes to to enable managing the bundles
+    # generated from both the docs and hugo repos.
+    bundleBucket="bundles-bucket-816a8d2"
+    # Upload the CSS/JS bundle files to the bundles bucket.
+    echo "Syncing CSS files to the bundles bucket"
+    aws s3 cp "${build_dir}/css/" "s3://${bundleBucket}/css/" --acl public-read  --content-type "text/css" --region "$(aws_region)" --recursive
+
+    echo "Syncing JS files to the bundles bucket"
+    aws s3 cp "${build_dir}/js/" "s3://${bundleBucket}/js/" --acl public-read  --content-type "text/javascript" --region "$(aws_region)" --recursive
+fi
+
 # At this point, we have a bucket that's suitable for deployment. As a result of this run,
 # we leave a file in the project root indicating the name of the bucket that was generated
 # and the associated commit SHA, and then we upload that file into the bucket as well, for
