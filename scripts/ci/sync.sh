@@ -79,7 +79,7 @@ aws s3 cp "$build_dir/latest-version" "${destination_bucket_uri}/latest-version"
 if [[ "$1" == "update" ]]; then
     # We host the bundle files in a separate bucket that `/css` and `js` routes to to enable managing the bundles
     # generated from both the docs and hugo repos.
-    bundleBucket="bundles-bucket-816a8d2"
+    bundleBucket=$(pulumi stack output --stack "pulumi/www.pulumi.com/www-testing" bundlesS3BucketName)
     # Upload the CSS/JS bundle files to the bundles bucket.
     echo "Syncing CSS files to the bundles bucket"
     aws s3 cp "${build_dir}/css/" "s3://${bundleBucket}/css/" --acl public-read  --content-type "text/css" --region "$(aws_region)" --recursive
